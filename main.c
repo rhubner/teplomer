@@ -10,13 +10,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "temp_linux.c"   //odkomentovanim toho radku
 
 #define BUFF_LENGTH 16
 
+#define FORMAT_ALL 0
+#define FORMAT_READ 1
+#define TEMP_ERR -1000
+
 //#define _POSIX_SOURCE 1 /* POSIX compliant source */
 
+
+int cti_drak(const int fd, char adresa, char vstup);
+
+int cti_teplotu(const int fd, const char adresa, int format);
+
+int is_valid_char(const char c);
 
 int main(int argc, char** argv) {
 
@@ -44,9 +55,36 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
+
+//######    DEBUG DRAK 
+//    for(i = 0 ; i < 1 ; i++) { 
+//        cti_drak(fd, '1', '3');
+//	usleep(1000 * 400);
+//    }    
+ 
+//######   DEBUG DRAK END
+
+    cti_teplotu(fd, 'H', FORMAT_ALL);
+
+    temp_close_port(fd);
+
+    exit(EXIT_SUCCESS);
+}
+
+
+
+int cti_teplotu(const int fd, const char adresa, const int format) {
+
+    char buff[BUFF_LENGTH];
+    char temp[BUFF_LENGTH];
+    int res = 0;
+    int i = 0;
+    int j = 0;
+    int value;
+
     buff[i++] = 'T';
-    buff[i++] = *argv[2];
-    buff[i++] = 'I';
+    buff[i++] = adresa;
+    buff[i++] = (format == FORMAT_READ) ? 'R' : 'I' ;
     buff[i] = 0;
     printf("zapisuju : %s\n", buff);
     
@@ -54,19 +92,89 @@ int main(int argc, char** argv) {
     printf("zapsano : %d\n", res);
     res = 0;
 
-    res = temp_cti_data(fd, buff, BUFF_LENGTH - 1, 10, 0x0A);
+    res = temp_cti_data(fd, buff, BUFF_LENGTH - 1, 10, 0x0D);	//TQS by taky mel pouzivat 0x0D
 
-    if (res <= 0) {
-        temp_close_port(fd);
-        exit(EXIT_FAILURE);
+//    sprintf(buff, "*H-025.9C");		//testovani zaporne hodnoty
+//    buff[9] = 0x0D;
+//    res = 10;
+
+    if(res <= 8)
+      return TEMP_ERR;
+
+    buff[res] = 0;
+    printf("prislo z cidla : %s\n", buff);
+
+    memset(temp, 0, BUFF_LENGTH);
+    
+    for(j = 0, i = 0 ; buff[j] != 0 && j < BUFF_LENGTH; j++) {
+      if(is_valid_char(buff[j]))
+        temp[i++] = buff[j];
+    }
+    printf("zkopirovano %s\n", temp);
+
+    sscanf(temp, "%d", &value);
+    
+    printf("hodnota : %d", value);    
+    
+    return value;
+}
+
+
+int cti_drak(const int fd, const char adresa, const char vstup) {
+    char buff[BUFF_LENGTH];
+    char temp[BUFF_LENGTH];
+    int res = 0;
+    int i = 0;
+    int value;
+    int crc;
+    int crc2;
+
+    memset(buff, 0, sizeof (char) * BUFF_LENGTH);
+
+    buff[i++] = '*';
+    buff[i++] = adresa;
+    buff[i++] = 'M';
+    buff[i++] = vstup;
+    buff[i] = 0;
+    printf("zapisuju : %s\n", buff);
+
+    temp_vyprazdni_io_buffer(fd);	//vycistime buffer
+ 
+    res = temp_zapis_data(fd, buff,i);	//zapiseme dotaz na hodnotu
+ 
+    res = temp_cti_data(fd, buff, BUFF_LENGTH -1, 14, 0x0D);	// drak ukoncuje znakem 0x0D (CR)
+    if(res != 8)
+      return -1;
+    buff[res] = 0; //konec retezce
+    printf("delka dat prislo z draka %s\n", buff);
+    
+    memcpy(temp, buff, 5);
+    temp[5] = 0;
+    printf("zkopirovano %s\n", temp);
+    sscanf(temp, "%d", &value);
+    
+    memcpy(temp, buff+5, 2);
+    temp[2] = 0;
+    printf("zkopirovano %s\n", temp);
+    
+    sscanf(temp, "%x", &crc);
+
+    printf("hodnota : %d, crc : %d\n", value, crc);
+
+   //overeni CRC 
+    crc2 = buff[0] + buff[1] + buff[2] + buff[3] + buff[4];
+    if(crc2 % 256 != crc) {
+        printf("nesouhlasi crc %d %d\n", crc2 % 256, crc);
+        return -2;
+    }
+
+    return value;
+}
+
+int is_valid_char(const char c) {
+    if( (c >= '0' && c <= '9') || c == '+' || c == '-') {
+      return 1;
     } else {
-        buff[res] = 0; //oznacime konec retezce;
-
-        printf("%s\n", buff);
-        //printf("%d", buff[9]);
-
-        temp_close_port(fd);
-
-        exit(EXIT_SUCCESS);
+      return 0;
     }
 }
