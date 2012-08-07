@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "temp_linux.c"   //odkomentovanim toho radku
 
@@ -30,6 +31,15 @@ int cti_teplotu(const int fd, const char adresa, int format);
 int is_valid_char(const char c);
 
 int main(int argc, char** argv) {
+
+    const char *short_options = "p:t:d:";
+
+    const struct option long_options[] = {
+	{"port", 1, NULL, 'p'},
+	{"temp", 1, NULL, 't'},
+	{"drak", 1, NULL, 'd'},
+	{NULL,   0, NULL,  0}
+    };
 
     int fd = 0; //deskriptor portu
     int res = 0;
