@@ -32,6 +32,8 @@ int is_valid_char(const char c);
 
 int main(int argc, char** argv) {
 
+    FILE *vystup;
+
     const char *short_options = "p:t:d:";
 
     const struct option long_options[] = {
@@ -66,16 +68,14 @@ int main(int argc, char** argv) {
     }
 
 
-//######    DEBUG DRAK 
-//    for(i = 0 ; i < 1 ; i++) { 
-//        cti_drak(fd, '1', '3');
-//	usleep(1000 * 400);
-//    }    
+    int hodnota = cti_drak(fd, '1', '3');
+  
+    if(hodnota >= 0) {
+      vystup = fopen("/tmp/tlak_now.txt", "w");
+      fprintf(vystup, "%d", hodnota);
+      fclose(vystup);
+    }
  
-//######   DEBUG DRAK END
-
-    cti_teplotu(fd, 'H', FORMAT_ALL);
-
     temp_close_port(fd);
 
     exit(EXIT_SUCCESS);
