@@ -50,13 +50,8 @@ int main(int argc, char** argv) {
 
     memset(buff, 0, sizeof (char) * BUFF_LENGTH);
 
-    if (argc != 3) {
-        printf("\nSpatne parametry prikazove radky\nprogram <cesta k portu> <adresa cidla>\ntemp /dev/ttyS0 A\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if (strlen(argv[2]) != 1) {
-        printf("spatna delka adresy");
+    if (argc != 2) {
+        printf("\nSpatne parametry prikazove radky\nprogram <cesta k portu> \ntemp /dev/ttyS0 \n");
         exit(EXIT_FAILURE);
     }
 
